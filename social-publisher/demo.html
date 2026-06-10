@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OnePost · 演示版（无需后端，双击即开）</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #1c2024; --muted: #8a919a;
+  --line: #e6e9ed; --accent: #2563eb; --accent-soft: #eff4ff;
+  --ok: #16a34a; --warn: #d97706; --err: #dc2626; --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); line-height: 1.6;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; }
+.container { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+header { text-align: center; margin-bottom: 28px; }
+header h1 { font-size: 30px; letter-spacing: 1px; }
+.sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.demo-tip { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+  border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 18px; }
+.card { background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
+.card h2 { font-size: 16px; margin-bottom: 12px; }
+input[type="text"], textarea { width: 100%; border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: inherit;
+  outline: none; transition: border-color .15s; background: #fafbfc; }
+input[type="text"]:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+input[type="text"] { margin-bottom: 10px; }
+textarea { resize: vertical; }
+.link-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 12px; background: var(--accent-soft);
+  border-radius: 10px; font-size: 13px; }
+.link-bar a { color: var(--accent); word-break: break-all; }
+.dropzone { margin-top: 12px; border: 1.5px dashed var(--line); border-radius: 10px;
+  padding: 18px; text-align: center; color: var(--muted); font-size: 14px;
+  cursor: pointer; transition: .15s; }
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+.media-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.media-item { position: relative; width: 92px; height: 92px; border-radius: 10px;
+  overflow: hidden; border: 1px solid var(--line); background: #f0f2f5;
+  display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.media-item img { width: 100%; height: 100%; object-fit: cover; }
+.media-item .del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px;
+  border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; border: none;
+  font-size: 12px; line-height: 1; cursor: pointer; }
+.media-item .tag { position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.5); color: #fff; font-size: 10px; text-align: center; }
+.row-between { display: flex; justify-content: space-between; align-items: baseline; }
+.badge { display: inline-block; font-size: 12px; font-weight: normal;
+  background: var(--accent-soft); color: var(--accent); border-radius: 999px;
+  padding: 2px 10px; margin-left: 8px; }
+.platforms { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.platform { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: .15s; }
+.platform:hover { border-color: var(--accent); }
+.platform.checked { border-color: var(--accent); background: var(--accent-soft); }
+.platform.disabled { opacity: .45; cursor: not-allowed; }
+.platform input { margin-top: 5px; accent-color: var(--accent); }
+.platform .p-name { font-size: 14px; font-weight: 600; }
+.platform .p-issues { font-size: 12px; color: var(--warn); }
+.platform .p-mode { font-size: 11px; color: var(--muted); }
+.actions { text-align: center; margin: 24px 0; }
+.btn { border: 1px solid var(--line); background: #fff; color: var(--text);
+  border-radius: 10px; padding: 8px 18px; font-size: 14px; cursor: pointer;
+  font-family: inherit; }
+.btn.small { padding: 4px 12px; font-size: 13px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff;
+  padding: 12px 64px; font-size: 16px; letter-spacing: 4px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.result-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0;
+  border-bottom: 1px solid var(--line); font-size: 14px; }
+.result-item:last-child { border-bottom: none; }
+.result-item .status { font-size: 16px; }
+.warn-line { color: var(--warn); font-size: 12px; }
+.muted { color: var(--muted); font-size: 13px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main class="container">
+  <header>
+    <h1>OnePost</h1>
+    <p class="sub">一次创作，多平台发布 · 自动识别内容并匹配平台规范</p>
+  </header>
+
+  <div class="demo-tip">
+    📌 这是<b>离线演示版</b>：内容识别、平台匹配、规范校验都在浏览器内真实运行；
+    「发布」和「链接解析」需要后端，在演示版中会模拟为草稿结果。
+    完整版运行方式见仓库 social-publisher/README.md。
+  </div>
+
+  <section class="card">
+    <input id="title" type="text" placeholder="标题（小红书 / YouTube / B站 等平台需要，可留空）" maxlength="100">
+    <textarea id="text" rows="6" placeholder="输入文字内容，或粘贴一个网页 / 视频链接自动转载…"></textarea>
+    <div id="link-bar" class="link-bar hidden">
+      <span>检测到链接：<a id="link-url" target="_blank" rel="noopener"></a></span>
+      <button id="btn-extract" class="btn small">解析并转载</button>
+      <span id="extract-status" class="muted"></span>
+    </div>
+    <div id="dropzone" class="dropzone">
+      <input id="file-input" type="file" multiple hidden accept="image/*,video/*,audio/*">
+      <span>拖拽或 <u>点击上传</u> 图片 / 视频 / 音乐</span>
+    </div>
+    <div id="media-list" class="media-list"></div>
+  </section>
+
+  <section class="card">
+    <div class="row-between">
+      <h2>发布平台 <span id="ctype-badge" class="badge hidden"></span></h2>
+      <span class="muted">已根据内容自动勾选推荐平台</span>
+    </div>
+    <div id="platforms" class="platforms"><p class="muted">输入内容后自动匹配…</p></div>
+  </section>
+
+  <div class="actions"><button id="btn-publish" class="btn primary" disabled>发 布</button></div>
+
+  <section id="results" class="card hidden">
+    <h2>发布结果</h2>
+    <div id="results-list"></div>
+  </section>
+</main>
+
+<script>
+/* ===== 演示版：平台规范与匹配逻辑（与后端 platforms.py 一致） ===== */
+const PLATFORMS = [
+  { id:"x", name:"X (Twitter)", icon:"𝕏", types:["text","image","video","link"],
+    textLimit:280, maxImages:4, maxVideoSec:140, api:true },
+  { id:"xiaohongshu", name:"小红书", icon:"📕", types:["text","image","video"],
+    textLimit:1000, titleLimit:20, maxImages:18, maxVideoSec:900, api:false },
+  { id:"weibo", name:"微博", icon:"🅦", types:["text","image","video","link"],
+    textLimit:2000, maxImages:9, maxVideoSec:900, api:true },
+  { id:"wechat_channels", name:"微信视频号", icon:"📹", types:["video","image"],
+    textLimit:1000, titleLimit:22, maxVideoSec:3600, api:false },
+  { id:"youtube", name:"YouTube", icon:"▶️", types:["video"],
+    textLimit:5000, titleLimit:100, maxVideoSec:43200, api:true },
+  { id:"bilibili", name:"哔哩哔哩", icon:"📺", types:["video","text","image"],
+    textLimit:2000, titleLimit:80, maxImages:9, maxVideoSec:36000, api:false },
+  { id:"douyin", name:"抖音", icon:"🎵", types:["video","image"],
+    textLimit:1000, maxImages:35, maxVideoSec:900, api:false },
+  { id:"tiktok", name:"TikTok", icon:"♪", types:["video","image"],
+    textLimit:2200, maxImages:35, maxVideoSec:600, api:true },
+  { id:"instagram", name:"Instagram", icon:"📷", types:["image","video"],
+    textLimit:2200, maxImages:10, maxVideoSec:900, api:true },
+];
+const RECOMMEND = {
+  "text": ["x","weibo","xiaohongshu","bilibili"],
+  "text+image": ["xiaohongshu","x","weibo","instagram"],
+  "image": ["instagram","xiaohongshu","x","weibo"],
+  "video": ["youtube","bilibili","douyin","tiktok","wechat_channels","x","weibo","instagram","xiaohongshu"],
+  "audio": ["x","weibo"],
+  "link": ["x","weibo"],
+};
+const CTYPE_LABEL = { text:"纯文字", image:"图片", "text+image":"图文",
+  video:"视频", audio:"音频", link:"链接转载" };
+const URL_RE = /https?:\/\/[^\s<>"']+/;
+
+const $ = s => document.querySelector(s);
+const state = { files: [], checked: new Set(), userTouched: new Set(), detectedUrl: "" };
+
+function xLen(t){ let n=0; for(const c of t) n += c.codePointAt(0) > 0x2E7F ? 2 : 1; return n; }
+
+function classify(file){
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "audio";
+  return "other";
+}
+
+function detectType(text, files){
+  const kinds = new Set(files.map(f=>f.kind));
+  const url = text.match(URL_RE);
+  const pure = url ? text.replace(url[0],"").trim() : text.trim();
+  if (kinds.has("video")) return "video";
+  if (kinds.has("audio")) return "audio";
+  if (kinds.has("image")) return pure ? "text+image" : "image";
+  if (url && !pure) return "link";
+  return "text";
+}
+
+function matchPlatforms(ctype, text, title, files){
+  const rec = RECOMMEND[ctype] || RECOMMEND.text;
+  const images = files.filter(f=>f.kind==="image");
+  const video = files.find(f=>f.kind==="video");
+  const audio = files.find(f=>f.kind==="audio");
+  const order = [...rec, ...PLATFORMS.map(p=>p.id).filter(id=>!rec.includes(id))];
+  return order.map(id => {
+    const p = PLATFORMS.find(x=>x.id===id);
+    const issues = [];
+    const n = p.id==="x" ? xLen(text) : text.length;
+    if (text && p.textLimit && n > p.textLimit)
+      issues.push(`正文 ${n} 字超过上限 ${p.textLimit}，发布时将自动截断`);
+    if (title && p.titleLimit && title.length > p.titleLimit)
+      issues.push(`标题 ${title.length} 字超过上限 ${p.titleLimit}`);
+    if (images.length){
+      if (!p.types.includes("image")) issues.push("该平台不支持图片");
+      else if (p.maxImages && images.length > p.maxImages)
+        issues.push(`图片 ${images.length} 张超过上限 ${p.maxImages}`);
+    }
+    if (video){
+      if (!p.types.includes("video")) issues.push("该平台不支持视频");
+      else if (p.maxVideoSec && video.duration > p.maxVideoSec)
+        issues.push(`视频时长 ${Math.round(video.duration)}s 超过上限 ${p.maxVideoSec}s`);
+    }
+    if (audio && !video && !p.types.includes("audio"))
+      issues.push("该平台不直接支持音频，建议先转换为视频");
+    const base = ctype.split("+")[0];
+    const fatal = issues.some(i=>i.includes("不支持"));
+    const ok = (p.types.includes(base) || (ctype==="text+image" && p.types.includes("image"))
+      || (base==="link" && p.types.includes("link"))) && !fatal;
+    return { ...p, ok, issues, recommended: rec.includes(id) && ok };
+  });
+}
+
+/* ===== 交互 ===== */
+let timer = null;
+function schedule(){ clearTimeout(timer); timer = setTimeout(refresh, 350); }
+
+function refresh(){
+  const text = $("#text").value.trim();
+  const m = text.match(URL_RE);
+  state.detectedUrl = m ? m[0] : "";
+  $("#link-bar").classList.toggle("hidden", !m);
+  if (m){ $("#link-url").textContent = m[0]; $("#link-url").href = m[0]; }
+
+  if (!text && !state.files.length){
+    $("#platforms").innerHTML = '<p class="muted">输入内容后自动匹配…</p>';
+    $("#ctype-badge").classList.add("hidden");
+    updateBtn(); return;
+  }
+  const ctype = detectType(text, state.files);
+  const badge = $("#ctype-badge");
+  badge.textContent = "识别为：" + (CTYPE_LABEL[ctype] || ctype);
+  badge.classList.remove("hidden");
+  render(matchPlatforms(ctype, text, $("#title").value.trim(), state.files));
+}
+
+function render(list){
+  list.forEach(p => {
+    if (!state.userTouched.has(p.id)){
+      if (p.recommended) state.checked.add(p.id); else state.checked.delete(p.id);
+    }
+    if (!p.ok) state.checked.delete(p.id);
+  });
+  const box = $("#platforms");
+  box.innerHTML = "";
+  list.forEach(p => {
+    const checked = state.checked.has(p.id);
+    const label = document.createElement("label");
+    label.className = "platform" + (checked?" checked":"") + (p.ok?"":" disabled");
+    label.innerHTML = `
+      <input type="checkbox" ${checked?"checked":""} ${p.ok?"":"disabled"}>
+      <div>
+        <div class="p-name">${p.icon} ${p.name}</div>
+        ${p.issues.map(i=>`<div class="p-issues">⚠ ${i}</div>`).join("")}
+        <div class="p-mode">${p.api ? "支持 API 直发" : "草稿包模式（无公开 API）"}</div>
+      </div>`;
+    label.querySelector("input").addEventListener("change", e => {
+      state.userTouched.add(p.id);
+      e.target.checked ? state.checked.add(p.id) : state.checked.delete(p.id);
+      label.classList.toggle("checked", e.target.checked);
+      updateBtn();
+    });
+    box.appendChild(label);
+  });
+  updateBtn();
+}
+
+function updateBtn(){
+  const has = $("#text").value.trim() || state.files.length;
+  $("#btn-publish").disabled = !(has && state.checked.size);
+}
+
+/* 上传（演示版：本地预览，视频自动读取时长） */
+const dz = $("#dropzone");
+dz.addEventListener("click", ()=> $("#file-input").click());
+$("#file-input").addEventListener("change", e => addFiles(e.target.files));
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+dz.addEventListener("dragleave", ()=> dz.classList.remove("drag"));
+dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("drag"); addFiles(e.dataTransfer.files); });
+
+function addFiles(fileList){
+  for (const f of fileList){
+    const item = { name: f.name, kind: classify(f), size: f.size, duration: 0,
+      url: URL.createObjectURL(f) };
+    state.files.push(item);
+    if (item.kind === "video"){
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = item.url;
+      v.onloadedmetadata = () => { item.duration = v.duration; refresh(); };
+    }
+  }
+  renderMedia(); schedule();
+}
+
+function renderMedia(){
+  const box = $("#media-list");
+  box.innerHTML = "";
+  state.files.forEach((f,i) => {
+    const div = document.createElement("div");
+    div.className = "media-item";
+    const icon = { video:"🎬", audio:"🎵", other:"📄" }[f.kind] || "";
+    div.innerHTML = (f.kind==="image" ? `<img src="${f.url}" alt="">` : `<span>${icon}</span>`)
+      + `<span class="tag">${f.name}</span><button class="del" data-i="${i}">✕</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll(".del").forEach(b => b.addEventListener("click", () => {
+    state.files.splice(Number(b.dataset.i),1); renderMedia(); schedule();
+  }));
+}
+
+/* 链接解析（演示版提示） */
+$("#btn-extract").addEventListener("click", () => {
+  $("#extract-status").textContent =
+    "演示版无后端：完整版会抓取网页标题/摘要/首图，视频链接经 yt-dlp 下载后可转发";
+});
+
+/* 发布（演示版：模拟草稿结果） */
+$("#btn-publish").addEventListener("click", () => {
+  const box = $("#results-list");
+  box.innerHTML = "";
+  [...state.checked].forEach(id => {
+    const p = PLATFORMS.find(x=>x.id===id);
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.innerHTML = `<span class="status">✅</span>
+      <div><div><b>${p.icon} ${p.name}</b> <span class="muted">（演示）</span></div>
+      <div>${p.api ? "完整版中将通过 API 直发" : "完整版中将保存草稿包到 drafts/" + p.id + "/"}</div></div>`;
+    box.appendChild(div);
+  });
+  $("#results").classList.remove("hidden");
+  $("#results").scrollIntoView({ behavior:"smooth" });
+});
+
+$("#text").addEventListener("input", schedule);
+$("#title").addEventListener("input", schedule);
+</script>
+</body>
+</html>

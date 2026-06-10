@@ -1,0 +1,177 @@
+"""一键多平台发布 — FastAPI 入口。
+
+启动: uvicorn app.main:app --reload
+访问: http://localhost:8000
+"""
+
+import asyncio
+import uuid
+from pathlib import Path
+
+import yaml
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from . import analyzer, extractor, platforms
+from .adapters import get_adapter
+
+ROOT = Path(__file__).resolve().parent.parent
+UPLOAD_DIR = ROOT / "uploads"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+CONFIG_PATH = ROOT / "config.yaml"
+
+app = FastAPI(title="OnePost 多平台发布")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+def load_config() -> dict:
+    if CONFIG_PATH.exists():
+        return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
+    return {}
+
+
+# ---------- 上传 ----------
+
+@app.post("/api/upload")
+async def upload(file: UploadFile = File(...)):
+    """保存上传文件，返回服务器端文件名与识别出的媒体类型。"""
+    ext = Path(file.filename or "file").suffix.lower()
+    name = f"{uuid.uuid4().hex[:12]}{ext}"
+    dest = UPLOAD_DIR / name
+    with dest.open("wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
+    kind = analyzer.classify_file(file.filename or name)
+    info = {"name": name, "original": file.filename, "kind": kind,
+            "size": dest.stat().st_size}
+    if kind == "video":
+        info["duration"] = _video_duration(dest)
+        info["format"] = ext.lstrip(".")
+    return info
+
+
+def _video_duration(path: Path) -> float:
+    import json
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json",
+             "-show_format", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        return float(json.loads(out.stdout)["format"]["duration"])
+    except Exception:
+        return 0.0
+
+
+# ---------- 分析与平台匹配 ----------
+
+class AnalyzeReq(BaseModel):
+    text: str = ""
+    title: str = ""
+    files: list[dict] = []
+
+
+@app.post("/api/analyze")
+async def analyze(req: AnalyzeReq):
+    """识别内容形态并返回各平台匹配结果（推荐项前端自动勾选）。"""
+    result = analyzer.analyze(req.text, req.files)
+    content = _build_content(req.title, req.text, req.files,
+                             result["content_type"])
+    matches = platforms.match_platforms(content)
+    return {"analysis": result, "platforms": matches}
+
+
+class ExtractReq(BaseModel):
+    url: str
+    download_video: bool = True
+
+
+@app.post("/api/extract")
+async def extract_link(req: ExtractReq):
+    """解析链接：文章抓取标题/摘要/首图，视频链接经 yt-dlp 下载供转发。"""
+    info = await extractor.extract(req.url, download_video=req.download_video)
+    files = []
+    if info.get("video"):
+        files.append({**info["video"], "kind": "video",
+                      "name": info["video"]["path"]})
+    ctype = "video" if info["kind"] == "video" else (
+        "text+image" if info.get("images") else "text")
+    content = _build_content(info.get("title", ""), info.get("text", ""),
+                             files, ctype)
+    content["source"] = req.url
+    return {"extracted": info, "platforms": platforms.match_platforms(content)}
+
+
+# ---------- 发布 ----------
+
+class PublishReq(BaseModel):
+    title: str = ""
+    text: str = ""
+    files: list[dict] = []
+    source: str = ""           # 转载来源链接
+    platforms: list[str]       # 用户勾选的平台 id
+
+
+@app.post("/api/publish")
+async def publish(req: PublishReq):
+    config = load_config()
+    ctype = analyzer.analyze(req.text, req.files)["content_type"]
+    content = _build_content(req.title, req.text, req.files, ctype)
+    if req.source:
+        content["source"] = req.source
+        attribution = f"\n\n转自: {req.source}"
+        content["text"] = (content["text"] or "") + attribution
+
+    async def run_one(pid: str) -> dict:
+        spec = platforms.PLATFORMS.get(pid)
+        if not spec:
+            return {"platform": pid, "ok": False, "message": "未知平台"}
+        v = platforms.validate_for_platform(spec, content)
+        adapter = get_adapter(pid, config)
+        res = await asyncio.to_thread(adapter.publish, content)
+        return {"platform": pid, "name": spec.name, "icon": spec.icon,
+                "warnings": v["issues"], **res}
+
+    results = await asyncio.gather(*(run_one(p) for p in req.platforms))
+    return {"results": list(results)}
+
+
+@app.get("/api/platforms")
+async def list_platforms():
+    config = load_config()
+    out = []
+    for spec in platforms.PLATFORMS.values():
+        adapter = get_adapter(spec.id, config)
+        out.append({
+            "id": spec.id, "name": spec.name, "icon": spec.icon,
+            "configured": adapter.is_configured(),
+            "api_available": spec.api_available,
+            "api_note": spec.api_note, "notes": spec.notes,
+        })
+    return out
+
+
+def _build_content(title: str, text: str, files: list[dict], ctype: str) -> dict:
+    images = [f["name"] for f in files if f.get("kind") == "image"]
+    videos = [f for f in files if f.get("kind") == "video"]
+    audios = [f for f in files if f.get("kind") == "audio"]
+    return {
+        "title": title, "text": text, "content_type": ctype,
+        "images": images,
+        "video": videos[0] if videos else None,
+        "audio": audios[0] if audios else None,
+    }
+
+
+@app.get("/uploads/{name}")
+async def serve_upload(name: str):
+    path = (UPLOAD_DIR / name).resolve()
+    if UPLOAD_DIR.resolve() not in path.parents or not path.exists():
+        return {"error": "not found"}
+    return FileResponse(path)
+
+
+app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
