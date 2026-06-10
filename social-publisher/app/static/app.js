@@ -234,6 +234,96 @@ function renderResults(results) {
   $("#results").scrollIntoView({ behavior: "smooth" });
 }
 
+/* ---------- 账号设置 ---------- */
+
+$("#btn-settings").addEventListener("click", openSettings);
+$("#btn-settings-close").addEventListener("click", () =>
+  $("#settings-modal").classList.add("hidden"));
+$("#settings-modal").addEventListener("click", (e) => {
+  if (e.target.id === "settings-modal") e.target.classList.add("hidden");
+});
+
+async function openSettings() {
+  $("#settings-modal").classList.remove("hidden");
+  const openIds = [...document.querySelectorAll(".acct.open")].map((d) => d.dataset.pid);
+  const res = await fetch("/api/settings");
+  const data = await res.json();
+  renderSettings(data, openIds);
+}
+
+function renderSettings(data, openIds = []) {
+  const box = $("#settings-list");
+  box.innerHTML = "";
+  data.platforms.forEach((p) => {
+    const div = document.createElement("div");
+    div.className = "acct" + (openIds.includes(p.id) ? " open" : "");
+    div.dataset.pid = p.id;
+    const chip = p.expired
+      ? '<span class="chip exp">已过期，请重新登录</span>'
+      : p.configured
+        ? `<span class="chip on">已登录${p.keep_days ? `（剩 ${p.remaining_days} 天）` : "（永久）"}</span>`
+        : p.has_api
+          ? '<span class="chip off">未登录</span>'
+          : '<span class="chip draft">草稿模式</span>';
+
+    const fieldsHtml = p.fields.map((f) => `
+      <label>${f.label}</label>
+      <input type="${f.secret ? "password" : "text"}" data-key="${f.key}"
+        value="${f.value || ""}" placeholder="${f.placeholder || ""}"
+        autocomplete="off">`).join("");
+
+    const keepHtml = data.keep_choices.map((c) =>
+      `<option value="${c.days}" ${c.days === p.keep_days ? "selected" : ""}>${c.label}</option>`
+    ).join("");
+
+    div.innerHTML = `
+      <div class="acct-head">
+        <span>${p.icon}</span><span class="a-name">${p.name}</span>${chip}
+      </div>
+      <div class="acct-body">
+        <p class="acct-help">${p.help}</p>
+        ${p.has_api ? `
+          ${fieldsHtml}
+          <div class="acct-foot">
+            <select data-keep>${keepHtml}</select>
+            <button class="btn small" data-save>保存登录</button>
+            ${p.configured || p.expired ? '<button class="btn small danger" data-logout>退出登录</button>' : ""}
+            <span class="save-msg muted"></span>
+          </div>` : ""}
+      </div>`;
+
+    div.querySelector(".acct-head").addEventListener("click", () =>
+      div.classList.toggle("open"));
+
+    const saveBtn = div.querySelector("[data-save]");
+    if (saveBtn) saveBtn.addEventListener("click", async () => {
+      const values = {};
+      div.querySelectorAll("input[data-key]").forEach((inp) => {
+        values[inp.dataset.key] = inp.value.trim();
+      });
+      const keep = Number(div.querySelector("[data-keep]").value);
+      const msg = div.querySelector(".save-msg");
+      msg.textContent = "保存中…";
+      const res = await fetch(`/api/settings/${p.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values, keep_days: keep }),
+      });
+      const r = await res.json();
+      msg.textContent = (r.ok ? "✅ " : "⚠️ ") + r.message;
+      openSettings();
+    });
+
+    const logoutBtn = div.querySelector("[data-logout]");
+    if (logoutBtn) logoutBtn.addEventListener("click", async () => {
+      await fetch(`/api/settings/${p.id}`, { method: "DELETE" });
+      openSettings();
+    });
+
+    box.appendChild(div);
+  });
+}
+
 /* ---------- 事件绑定 ---------- */
 
 $("#text").addEventListener("input", scheduleAnalyze);

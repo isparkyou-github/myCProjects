@@ -8,28 +8,25 @@ import asyncio
 import uuid
 from pathlib import Path
 
-import yaml
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analyzer, extractor, platforms
+from . import analyzer, extractor, platforms, settings
 from .adapters import get_adapter
 
 ROOT = Path(__file__).resolve().parent.parent
 UPLOAD_DIR = ROOT / "uploads"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-CONFIG_PATH = ROOT / "config.yaml"
 
 app = FastAPI(title="OnePost 多平台发布")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 def load_config() -> dict:
-    if CONFIG_PATH.exists():
-        return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
-    return {}
+    """读取配置，已过期的平台凭据自动剔除（降级为草稿模式）。"""
+    return settings.effective_config()
 
 
 # ---------- 上传 ----------
@@ -152,6 +149,40 @@ async def list_platforms():
             "api_note": spec.api_note, "notes": spec.notes,
         })
     return out
+
+
+# ---------- 账号设置 ----------
+
+class SettingsReq(BaseModel):
+    values: dict = {}
+    keep_days: int = 0     # 0 = 永久；1/7/30 = 保持天数
+
+
+@app.get("/api/settings")
+async def get_settings():
+    config = load_config()
+    configured = {pid: get_adapter(pid, config).is_configured()
+                  for pid in platforms.PLATFORMS}
+    return {
+        "platforms": settings.settings_view(platforms.PLATFORMS, configured),
+        "keep_choices": settings.KEEP_CHOICES,
+    }
+
+
+@app.post("/api/settings/{pid}")
+async def save_settings(pid: str, req: SettingsReq):
+    if pid not in platforms.PLATFORMS:
+        return {"ok": False, "message": "未知平台"}
+    settings.save_platform(pid, req.values, req.keep_days)
+    configured = get_adapter(pid, load_config()).is_configured()
+    return {"ok": True, "configured": configured,
+            "message": "已保存" + ("，凭据已生效" if configured else "，凭据不完整，仍为草稿模式")}
+
+
+@app.delete("/api/settings/{pid}")
+async def delete_settings(pid: str):
+    settings.clear_platform(pid)
+    return {"ok": True, "message": "已退出登录"}
 
 
 def _build_content(title: str, text: str, files: list[dict], ctype: str) -> dict:

@@ -220,6 +220,77 @@ textarea { resize: vertical; }
 .muted { color: var(--muted); font-size: 13px; }
 .hidden { display: none !important; }
 
+/* ---------- 账号设置弹窗 ---------- */
+
+.settings-entry { margin-top: 12px; }
+
+.modal {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(40, 45, 70, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 24px;
+}
+.modal-card {
+  width: 100%; max-width: 640px; max-height: 86vh;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: 0 24px 70px rgba(50, 60, 110, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.modal-head { margin-bottom: 6px; }
+.settings-note { margin-bottom: 14px; }
+
+.acct {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 16px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.acct-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer; user-select: none;
+}
+.acct-head .a-name { font-size: 14px; font-weight: 600; flex: 1; }
+.chip {
+  font-size: 11px; border-radius: 999px; padding: 2px 10px;
+  border: 1px solid transparent;
+}
+.chip.on { background: rgba(22, 163, 74, .12); color: var(--ok);
+  border-color: rgba(22, 163, 74, .25); }
+.chip.off { background: rgba(125, 135, 170, .12); color: var(--muted);
+  border-color: rgba(125, 135, 170, .2); }
+.chip.exp { background: rgba(220, 38, 38, .10); color: var(--err);
+  border-color: rgba(220, 38, 38, .25); }
+.chip.draft { background: rgba(194, 112, 10, .10); color: var(--warn);
+  border-color: rgba(194, 112, 10, .22); }
+
+.acct-body { padding: 0 14px 14px; display: none; }
+.acct.open .acct-body { display: block; }
+.acct-help { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.acct-body label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.acct-body input[type="text"], .acct-body input[type="password"] {
+  width: 100%; border: 1px solid rgba(255,255,255,.75); border-radius: 10px;
+  padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none;
+  background: rgba(255,255,255,.6); margin-bottom: 8px; color: var(--text);
+}
+.acct-body input:focus { border-color: rgba(59,109,240,.55); }
+.acct-foot { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+.acct-foot select {
+  border: 1px solid rgba(255,255,255,.75); border-radius: 10px;
+  padding: 7px 10px; font-size: 13px; font-family: inherit;
+  background: rgba(255,255,255,.6); color: var(--text); outline: none;
+}
+.acct-foot .save-msg { font-size: 12px; }
+.btn.danger { color: var(--err); }
+
 .spinner {
   display: inline-block; width: 14px; height: 14px;
   border: 2px solid rgba(255,255,255,.6); border-top-color: var(--accent);
