@@ -7,3 +7,4 @@ stats_history.json
 .venv/
 __pycache__/
 *.pyc
+onepost.log
