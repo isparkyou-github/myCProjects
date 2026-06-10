@@ -1,0 +1,38 @@
+#!/bin/bash
+# OnePost 静默启动器：双击应用 → 后台启动服务 → 自动打开浏览器
+# 日志写入项目目录 onepost.log；停止服务: 双击「停止OnePost.command」或重启电脑
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$DIR"
+
+notify() {
+  osascript -e "display notification \"$1\" with title \"OnePost\"" 2>/dev/null
+}
+
+# 已在运行 → 直接打开浏览器
+if curl -s http://127.0.0.1:8000/api/platforms >/dev/null 2>&1; then
+  open "http://127.0.0.1:8000"
+  exit 0
+fi
+
+# 首次运行：安装依赖
+if [ ! -d .venv ]; then
+  notify "首次运行，正在安装依赖（约 1-2 分钟）…"
+  python3 -m venv .venv 2>>onepost.log || { notify "启动失败：未找到 Python3"; exit 1; }
+  ./.venv/bin/pip install --quiet --upgrade pip >>onepost.log 2>&1
+  ./.venv/bin/pip install --quiet -r requirements.txt >>onepost.log 2>&1 \
+    || { notify "依赖安装失败，详见 onepost.log"; exit 1; }
+fi
+
+nohup ./.venv/bin/uvicorn app.main:app --port 8000 >>onepost.log 2>&1 &
+
+# 等服务就绪后打开浏览器
+for _ in $(seq 1 30); do
+  sleep 1
+  if curl -s http://127.0.0.1:8000/api/platforms >/dev/null 2>&1; then
+    notify "OnePost 已启动"
+    open "http://127.0.0.1:8000"
+    exit 0
+  fi
+done
+notify "启动超时，详见 onepost.log"
+exit 1
