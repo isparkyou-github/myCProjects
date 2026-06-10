@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · OnePost</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="container login-wrap">
+  <div class="card login-card">
+    <img src="icon.png" alt="" class="login-logo">
+    <h1 class="login-title">OnePost</h1>
+    <p class="muted" style="margin-bottom:16px">请输入访问密码</p>
+    <input id="pw" type="password" placeholder="访问密码" autocomplete="current-password">
+    <select id="keep">
+      <option value="1">保持登录 1 天</option>
+      <option value="7">保持登录 7 天</option>
+      <option value="30" selected>保持登录 30 天</option>
+      <option value="0">永久保持登录</option>
+    </select>
+    <button id="btn-login" class="btn primary login-btn">登 录</button>
+    <p id="msg" class="muted"></p>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+async function doLogin() {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: $("#pw").value,
+                           keep_days: Number($("#keep").value) }),
+  });
+  if (res.ok) { location.href = "/"; }
+  else { $("#msg").textContent = "❌ 密码错误，请重试"; $("#pw").value = ""; }
+}
+$("#btn-login").addEventListener("click", doLogin);
+$("#pw").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+$("#pw").focus();
+</script>
+</body>
+</html>

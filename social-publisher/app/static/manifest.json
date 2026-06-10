@@ -1,0 +1,11 @@
+{
+  "name": "OnePost 多平台发布",
+  "short_name": "OnePost",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#dfe7ff",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

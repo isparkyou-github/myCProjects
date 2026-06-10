@@ -23,6 +23,8 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   echo "   安装方法: brew install ffmpeg"
 fi
 
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null)
 echo "正在启动 OnePost… 关闭本窗口即停止服务"
+[ -n "$LAN_IP" ] && echo "📱 手机（同一 Wi-Fi）访问: http://$LAN_IP:8000  （建议先在账号设置中开启访问密码）"
 ( sleep 2 && open "http://127.0.0.1:8000" ) &
-exec ./.venv/bin/uvicorn app.main:app --port 8000
+exec ./.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000

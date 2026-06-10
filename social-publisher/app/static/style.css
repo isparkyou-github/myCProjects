@@ -360,3 +360,51 @@ textarea { resize: vertical; }
   vertical-align: -2px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 登录页 ---------- */
+
+.login-wrap {
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  padding-top: 0; padding-bottom: 0;
+}
+.login-card { width: 100%; max-width: 360px; text-align: center; padding: 32px 26px; }
+.login-logo { width: 72px; height: 72px; border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(120, 90, 220, 0.35); margin-bottom: 10px; }
+.login-title {
+  font-size: 26px; margin-bottom: 4px;
+  background: linear-gradient(120deg, #3b6df0, #8b5cf6 55%, #ec6a9c);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.login-card input { margin-bottom: 10px; text-align: center; }
+.login-card select {
+  width: 100%; border: 1px solid rgba(255,255,255,.75); border-radius: 12px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+  background: rgba(255,255,255,.6); color: var(--text); outline: none;
+  margin-bottom: 14px;
+}
+.login-btn { width: 100%; letter-spacing: 6px; }
+#msg { margin-top: 10px; }
+
+/* ---------- 手机适配 ---------- */
+
+@media (max-width: 600px) {
+  .container { padding: 20px 12px 56px; }
+  header { margin-bottom: 18px; }
+  header h1 { font-size: 26px; gap: 9px; }
+  .logo { width: 36px; height: 36px; border-radius: 9px; }
+  .card { padding: 15px; border-radius: 18px; margin-bottom: 13px; }
+  .dropzone { padding: 14px; }
+  .platforms, .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .platform { padding: 9px 10px; border-radius: 13px; }
+  .platform .p-name { font-size: 13px; }
+  .btn.primary { width: 100%; padding: 13px 0; }
+  .modal { padding: 0; align-items: flex-end; }
+  .modal-card, .modal-card.wide {
+    max-width: none; max-height: 92vh;
+    border-radius: 22px 22px 0 0;
+  }
+  .posts-table { font-size: 12px; }
+  .posts-table .p-title { max-width: 130px; }
+  .media-item { width: 76px; height: 76px; }
+}

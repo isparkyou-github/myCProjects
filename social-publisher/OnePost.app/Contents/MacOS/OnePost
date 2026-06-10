@@ -23,7 +23,7 @@ if [ ! -d .venv ]; then
     || { notify "依赖安装失败，详见 onepost.log"; exit 1; }
 fi
 
-nohup ./.venv/bin/uvicorn app.main:app --port 8000 >>onepost.log 2>&1 &
+nohup ./.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 >>onepost.log 2>&1 &
 
 # 等服务就绪后打开浏览器
 for _ in $(seq 1 30); do

@@ -246,14 +246,18 @@ $("#settings-modal").addEventListener("click", (e) => {
 async function openSettings() {
   $("#settings-modal").classList.remove("hidden");
   const openIds = [...document.querySelectorAll(".acct.open")].map((d) => d.dataset.pid);
-  const res = await fetch("/api/settings");
+  const [res, authRes] = await Promise.all([
+    fetch("/api/settings"), fetch("/api/auth/status"),
+  ]);
   const data = await res.json();
-  renderSettings(data, openIds);
+  const authData = await authRes.json();
+  renderSettings(data, openIds, authData.enabled);
 }
 
-function renderSettings(data, openIds = []) {
+function renderSettings(data, openIds = [], authEnabled = false) {
   const box = $("#settings-list");
   box.innerHTML = "";
+  box.appendChild(buildAuthCard(authEnabled, openIds.includes("_auth")));
   data.platforms.forEach((p) => {
     const div = document.createElement("div");
     div.className = "acct" + (openIds.includes(p.id) ? " open" : "");
@@ -322,6 +326,53 @@ function renderSettings(data, openIds = []) {
 
     box.appendChild(div);
   });
+}
+
+/* 手机访问/登录保护设置卡片 */
+function buildAuthCard(enabled, open) {
+  const div = document.createElement("div");
+  div.className = "acct" + (open ? " open" : "");
+  div.dataset.pid = "_auth";
+  div.innerHTML = `
+    <div class="acct-head">
+      <span>📱</span><span class="a-name">手机访问 · 登录保护</span>
+      ${enabled
+        ? '<span class="chip on">已开启</span>'
+        : '<span class="chip off">未开启</span>'}
+    </div>
+    <div class="acct-body">
+      <p class="acct-help">手机连同一 Wi-Fi 后，用浏览器打开「http://电脑IP:8000」即可使用，
+        并可通过浏览器菜单「添加到主屏幕」变成手机 App。
+        开启访问密码后，其他设备需登录才能访问（可选保持登录时长）。</p>
+      <label>访问密码（至少 4 位）</label>
+      <input type="password" data-key="_pw" placeholder="${enabled ? "输入新密码可修改" : "设置访问密码"}"
+        autocomplete="new-password">
+      <div class="acct-foot">
+        <button class="btn small" data-auth-save>${enabled ? "修改密码" : "开启保护"}</button>
+        ${enabled ? '<button class="btn small danger" data-auth-off>关闭保护</button>' : ""}
+        <span class="save-msg muted"></span>
+      </div>
+    </div>`;
+  div.querySelector(".acct-head").addEventListener("click", () =>
+    div.classList.toggle("open"));
+  div.querySelector("[data-auth-save]").addEventListener("click", async () => {
+    const pw = div.querySelector("[data-key='_pw']").value.trim();
+    const msg = div.querySelector(".save-msg");
+    const res = await fetch("/api/auth/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    });
+    const r = await res.json();
+    msg.textContent = (r.ok ? "✅ " : "⚠️ ") + r.message;
+    if (r.ok) setTimeout(openSettings, 800);
+  });
+  const offBtn = div.querySelector("[data-auth-off]");
+  if (offBtn) offBtn.addEventListener("click", async () => {
+    await fetch("/api/auth/password", { method: "DELETE" });
+    openSettings();
+  });
+  return div;
 }
 
 /* ---------- 数据看板 ---------- */
@@ -502,3 +553,7 @@ function svgChart(series) {
 
 $("#text").addEventListener("input", scheduleAnalyze);
 $("#title").addEventListener("input", scheduleAnalyze);
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
