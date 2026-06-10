@@ -291,6 +291,59 @@ textarea { resize: vertical; }
 .acct-foot .save-msg { font-size: 12px; }
 .btn.danger { color: var(--err); }
 
+/* ---------- 数据看板 ---------- */
+
+.settings-entry { display: flex; gap: 8px; justify-content: center; }
+
+.modal-card.wide { max-width: 720px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.stat-card {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 16px; padding: 13px 15px; cursor: pointer;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.stat-card:hover { transform: translateY(-1px);
+  border-color: rgba(59,109,240,.45);
+  box-shadow: 0 6px 18px rgba(85,95,145,.14); }
+.stat-card .s-head { display: flex; gap: 8px; align-items: center;
+  font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.stat-card .s-followers { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.stat-card .s-followers small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.stat-row { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.stat-row b { color: var(--text); font-weight: 600; }
+.d-up { color: var(--ok); font-size: 11px; }
+.d-down { color: var(--err); font-size: 11px; }
+.s-updated { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.s-empty { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.chart-box {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 16px; padding: 14px; margin-bottom: 12px;
+}
+.chart-box h3 { font-size: 13px; margin-bottom: 8px; }
+.chart-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+.posts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.posts-table th, .posts-table td { text-align: left; padding: 7px 8px;
+  border-bottom: 1px solid rgba(125, 135, 170, 0.16); }
+.posts-table th { color: var(--muted); font-weight: 500; font-size: 12px; }
+.posts-table td.num, .posts-table th.num { text-align: right; }
+.posts-table .p-title { max-width: 280px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+
+.manual-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.manual-form .mf { flex: 1; min-width: 90px; }
+.manual-form label { display: block; font-size: 11px; color: var(--muted); }
+.manual-form input {
+  width: 100%; border: 1px solid rgba(255,255,255,.75); border-radius: 10px;
+  padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none;
+  background: rgba(255,255,255,.6); color: var(--text);
+}
+
 .spinner {
   display: inline-block; width: 14px; height: 14px;
   border: 2px solid rgba(255,255,255,.6); border-top-color: var(--accent);

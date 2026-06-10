@@ -1,0 +1,15 @@
+# 启动前先执行:
+#   cp config.example.yaml config.yaml   # 如尚未创建
+#   touch stats_history.json
+# 然后: docker compose up -d  → 打开 http://localhost:8000
+services:
+  onepost:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./stats_history.json:/app/stats_history.json
+      - ./uploads:/app/uploads
+      - ./drafts:/app/drafts
+    restart: unless-stopped
