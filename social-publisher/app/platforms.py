@@ -132,6 +132,7 @@ def text_weight_len(text: str) -> int:
 def validate_for_platform(spec: PlatformSpec, content: dict) -> dict:
     """校验一份内容是否符合某平台规范，返回 {ok, issues:[...]}。"""
     issues: list[str] = []
+    hard: bool = False   # 无法自动修正的超限（视频时长/大小/格式），不参与自动勾选
     text = content.get("text") or ""
     title = content.get("title") or ""
     images = content.get("images") or []
@@ -163,12 +164,15 @@ def validate_for_platform(spec: PlatformSpec, content: dict) -> dict:
             dur = video.get("duration") or 0
             if spec.max_video_seconds and dur > spec.max_video_seconds:
                 issues.append(f"视频时长 {int(dur)}s 超过上限 {spec.max_video_seconds}s")
+                hard = True
             size_mb = (video.get("size") or 0) / 1024 / 1024
             if spec.max_video_mb and size_mb > spec.max_video_mb:
                 issues.append(f"视频 {size_mb:.0f}MB 超过上限 {spec.max_video_mb}MB")
+                hard = True
             fmt = (video.get("format") or "").lower()
             if fmt and fmt not in spec.video_formats:
                 issues.append(f"视频格式 {fmt} 不受支持（支持: {','.join(spec.video_formats)}）")
+                hard = True
 
     if audio and not video and "video" in spec.content_types and "audio" not in spec.content_types:
         issues.append("该平台不直接支持音频，建议先转换为视频")
@@ -180,7 +184,7 @@ def validate_for_platform(spec: PlatformSpec, content: dict) -> dict:
     supported = base in spec.content_types or (base == "link" and "link" in spec.content_types) \
         or (ctype == "text+image" and "image" in spec.content_types)
 
-    return {"ok": supported and not fatal, "issues": issues}
+    return {"ok": supported and not fatal, "issues": issues, "hard": hard}
 
 
 def match_platforms(content: dict) -> list[dict]:
@@ -195,7 +199,7 @@ def match_platforms(content: dict) -> list[dict]:
             "id": spec.id,
             "name": spec.name,
             "icon": spec.icon,
-            "recommended": pid in rec_order and v["ok"],
+            "recommended": pid in rec_order and v["ok"] and not v["hard"],
             "ok": v["ok"],
             "issues": v["issues"],
             "api_available": spec.api_available,
