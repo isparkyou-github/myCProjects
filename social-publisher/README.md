@@ -105,6 +105,21 @@ social-publisher/
 | `POST /api/publish` | 向勾选的平台并行发布 |
 | `GET /api/platforms` | 各平台规范与配置状态 |
 
+## 分享给朋友试用（Render 一键部署）
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/isparkyou-github/myCProjects)
+
+1. 点上方按钮（或打开 `https://render.com/deploy?repo=https://github.com/isparkyou-github/myCProjects`）
+2. 用 GitHub 账号登录 Render 并授权访问仓库，点 **Deploy Blueprint**
+3. 等待几分钟构建完成，得到形如 `https://onepost-xxxx.onrender.com` 的公开网址
+4. **立刻打开该网址 → ⚙️ 账号设置 → 📱 手机访问 → 设置访问密码**（先到先得，务必第一时间设置）
+5. 把「网址 + 密码」发给朋友即可
+
+试用实例注意事项：
+- **不要**在共享实例中填写你的真实平台 API 凭据（所有登录者共用同一配置）
+- 免费套餐闲置 15 分钟会休眠，下次打开需等约 1 分钟冷启动
+- 磁盘是临时的：重新部署后草稿、统计数据会清空（试用够用，正式使用请按下方方案部署）
+
 ## 部署
 
 **本地运行（推荐日常使用）**：见上方快速开始，凭据保存在本机最安全。
