@@ -52,10 +52,19 @@ header { text-align: center; margin-bottom: 30px; }
 header h1 {
   font-size: 34px;
   letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   background: linear-gradient(120deg, #3b6df0, #8b5cf6 55%, #ec6a9c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.logo {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(120, 90, 220, 0.35);
 }
 .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
