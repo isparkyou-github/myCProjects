@@ -8,12 +8,12 @@ import asyncio
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analyzer, extractor, platforms, settings, stats
+from . import analyzer, auth, extractor, platforms, settings, stats
 from .adapters import get_adapter
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,6 +27,72 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 def load_config() -> dict:
     """读取配置，已过期的平台凭据自动剔除（降级为草稿模式）。"""
     return settings.effective_config()
+
+
+# ---------- 登录保护（设置访问密码后启用） ----------
+
+AUTH_EXEMPT = ("/login", "/api/login", "/style.css", "/favicon.png",
+               "/icon.png", "/manifest.json", "/sw.js")
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if auth.enabled() and path not in AUTH_EXEMPT:
+        token = request.cookies.get("onepost_session", "")
+        if not auth.verify_token(token):
+            if path.startswith("/api/"):
+                return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return RedirectResponse("/login")
+    return await call_next(request)
+
+
+class LoginReq(BaseModel):
+    password: str
+    keep_days: int = 30    # 0 = 永久
+
+
+@app.get("/login")
+async def login_page():
+    return FileResponse(STATIC_DIR / "login.html")
+
+
+@app.post("/api/login")
+async def login(req: LoginReq):
+    if not auth.check_password(req.password):
+        return JSONResponse({"ok": False, "message": "密码错误"}, status_code=401)
+    resp = JSONResponse({"ok": True})
+    max_age = 10 * 365 * 86400 if req.keep_days == 0 else req.keep_days * 86400
+    resp.set_cookie("onepost_session", auth.make_token(req.keep_days),
+                    max_age=max_age, httponly=True, samesite="lax")
+    return resp
+
+
+class PasswordReq(BaseModel):
+    password: str
+
+
+@app.get("/api/auth/status")
+async def auth_status():
+    return {"enabled": auth.enabled()}
+
+
+@app.post("/api/auth/password")
+async def set_auth_password(req: PasswordReq):
+    if len(req.password) < 4:
+        return {"ok": False, "message": "密码至少 4 位"}
+    auth.set_password(req.password)
+    # 当前设备直接保持登录（永久），其他设备需用密码登录
+    resp = JSONResponse({"ok": True, "message": "访问密码已开启，手机访问时需登录"})
+    resp.set_cookie("onepost_session", auth.make_token(0),
+                    max_age=10 * 365 * 86400, httponly=True, samesite="lax")
+    return resp
+
+
+@app.delete("/api/auth/password")
+async def clear_auth_password():
+    auth.clear_password()
+    return {"ok": True, "message": "已关闭登录保护"}
 
 
 # ---------- 上传 ----------
