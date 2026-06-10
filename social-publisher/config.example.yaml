@@ -1,0 +1,33 @@
+# 复制为 config.yaml 并填入各平台凭据。
+# 未配置的平台会自动降级为「草稿包模式」：内容 + 媒体保存到 drafts/<平台>/ 供手动发布。
+
+# ── X (Twitter) ─ developer.x.com 创建应用，开通 Read & Write ──
+x:
+  api_key: ""
+  api_secret: ""
+  access_token: ""
+  access_token_secret: ""
+
+# ── YouTube ─ Google Cloud 创建 OAuth 客户端，运行 python youtube_auth.py 生成 token ──
+youtube:
+  token_file: "youtube_token.json"
+  privacy: "public"        # public / unlisted / private
+
+# ── 微博 ─ open.weibo.com 申请应用获取 access_token ──
+weibo:
+  access_token: ""
+
+# ── TikTok ─ developers.tiktok.com 申请 Content Posting API ──
+tiktok:
+  access_token: ""
+  privacy: "SELF_ONLY"     # 审核通过 audited client 后可改 PUBLIC_TO_EVERYONE
+
+# ── Instagram ─ Facebook 开发者平台 Graph API（需专业账号）──
+# media_base_url: 能从公网访问到本服务 uploads/ 目录的地址（Graph API 要求媒体为 URL）
+instagram:
+  access_token: ""
+  ig_user_id: ""
+  media_base_url: ""       # 例如 https://your-domain.com/uploads
+
+# 以下平台无公开个人发布 API，始终使用草稿包模式：
+# 小红书 (xiaohongshu) / 微信视频号 (wechat_channels) / 抖音 (douyin) / 哔哩哔哩 (bilibili)
