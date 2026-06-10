@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+uploads/
+drafts/
+config.yaml
+client_secret.json
+youtube_token.json
+stats_history.json
+demo.html

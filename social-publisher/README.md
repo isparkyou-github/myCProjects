@@ -80,6 +80,24 @@ social-publisher/
 | `POST /api/publish` | 向勾选的平台并行发布 |
 | `GET /api/platforms` | 各平台规范与配置状态 |
 
+## 部署
+
+**本地运行（推荐日常使用）**：见上方快速开始，凭据保存在本机最安全。
+
+**Docker 部署**（云服务器 / Railway / Fly.io 等支持持久磁盘的平台）：
+
+```bash
+cd social-publisher
+cp config.example.yaml config.yaml && touch stats_history.json
+docker compose up -d        # 打开 http://服务器IP:8000
+```
+
+部署到公网时务必加访问控制（反向代理 + Basic Auth，或仅绑定内网/VPN），
+config.yaml 中保存着你的平台凭据。
+
+> ⚠️ 不建议 Vercel/Netlify 等无服务器平台：无持久磁盘（凭据/草稿/数据丢失）、
+> 请求体上限小（视频传不上去）、函数超时（视频下载/上传会被掐断）、无法安装 ffmpeg。
+
 ## 注意事项
 
 - 转载他人内容请确保已获得授权，遵守各平台的转载与版权规则
