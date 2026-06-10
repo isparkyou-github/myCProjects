@@ -46,6 +46,38 @@ class XAdapter(BaseAdapter):
         return {"ok": True, "mode": "api", "message": "已发布到 X",
                 "url": f"https://x.com/i/status/{tid}"}
 
+    def fetch_stats(self) -> dict | None:
+        import tweepy
+
+        client = tweepy.Client(
+            consumer_key=self.config["api_key"],
+            consumer_secret=self.config["api_secret"],
+            access_token=self.config["access_token"],
+            access_token_secret=self.config["access_token_secret"],
+        )
+        me = client.get_me(user_fields=["public_metrics"]).data
+        followers = me.public_metrics["followers_count"]
+        tweets = client.get_users_tweets(
+            me.id, max_results=20,
+            tweet_fields=["public_metrics", "text"],
+        ).data or []
+        posts, likes, comments, favorites = [], 0, 0, 0
+        for t in tweets:
+            m = t.public_metrics
+            likes += m.get("like_count", 0)
+            comments += m.get("reply_count", 0)
+            favorites += m.get("bookmark_count", 0)
+            posts.append({
+                "title": t.text[:40],
+                "views": m.get("impression_count", 0),
+                "likes": m.get("like_count", 0),
+                "comments": m.get("reply_count", 0),
+                "favorites": m.get("bookmark_count", 0),
+            })
+        return {"metrics": {"followers": followers, "likes": likes,
+                            "comments": comments, "favorites": favorites},
+                "posts": posts}
+
     @staticmethod
     def _fit(text: str, limit: int = 280) -> str:
         """按 X 加权字数截断（CJK 计 2）。"""

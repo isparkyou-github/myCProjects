@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analyzer, extractor, platforms, settings
+from . import analyzer, extractor, platforms, settings, stats
 from .adapters import get_adapter
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -183,6 +183,54 @@ async def save_settings(pid: str, req: SettingsReq):
 async def delete_settings(pid: str):
     settings.clear_platform(pid)
     return {"ok": True, "message": "已退出登录"}
+
+
+# ---------- 数据看板 ----------
+
+class ManualStatsReq(BaseModel):
+    followers: int = 0
+    likes: int = 0
+    comments: int = 0
+    favorites: int = 0
+
+
+@app.get("/api/stats")
+async def get_stats():
+    config = load_config()
+    refreshable = [pid for pid in platforms.PLATFORMS
+                   if get_adapter(pid, config).is_configured()]
+    return {"platforms": stats.overview(platforms.PLATFORMS),
+            "refreshable": refreshable}
+
+
+@app.post("/api/stats/manual/{pid}")
+async def manual_stats(pid: str, req: ManualStatsReq):
+    if pid not in platforms.PLATFORMS:
+        return {"ok": False, "message": "未知平台"}
+    stats.record(pid, req.model_dump(), source="manual")
+    return {"ok": True, "message": "已记录"}
+
+
+@app.post("/api/stats/refresh")
+async def refresh_stats():
+    """从已配置凭据的平台 API 拉取最新数据。"""
+    config = load_config()
+
+    async def fetch_one(pid: str) -> dict:
+        adapter = get_adapter(pid, config)
+        if not adapter.is_configured():
+            return {"platform": pid, "ok": False, "message": "未配置凭据"}
+        try:
+            data = await asyncio.to_thread(adapter.fetch_stats)
+        except Exception as e:
+            return {"platform": pid, "ok": False, "message": f"拉取失败: {e}"}
+        if not data:
+            return {"platform": pid, "ok": False, "message": "该平台暂不支持数据拉取"}
+        stats.record(pid, data["metrics"], data.get("posts"), source="api")
+        return {"platform": pid, "ok": True, "message": "已更新"}
+
+    results = await asyncio.gather(*(fetch_one(p) for p in platforms.PLATFORMS))
+    return {"results": [r for r in results if r["ok"] or "未配置" not in r["message"]]}
 
 
 def _build_content(title: str, text: str, files: list[dict], ctype: str) -> dict:

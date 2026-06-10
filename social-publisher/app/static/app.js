@@ -324,6 +324,180 @@ function renderSettings(data, openIds = []) {
   });
 }
 
+/* ---------- 数据看板 ---------- */
+
+let statsData = null;
+
+$("#btn-stats").addEventListener("click", openStats);
+$("#btn-stats-close").addEventListener("click", () =>
+  $("#stats-modal").classList.add("hidden"));
+$("#btn-stats-back").addEventListener("click", showOverview);
+$("#stats-modal").addEventListener("click", (e) => {
+  if (e.target.id === "stats-modal") e.target.classList.add("hidden");
+});
+$("#btn-stats-refresh").addEventListener("click", async () => {
+  const btn = $("#btn-stats-refresh");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 拉取中…';
+  try {
+    const res = await fetch("/api/stats/refresh", { method: "POST" });
+    const data = await res.json();
+    const fails = data.results.filter((r) => !r.ok);
+    if (fails.length) alert(fails.map((f) => `${f.platform}: ${f.message}`).join("\n"));
+    await openStats();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "⟳ 刷新数据";
+  }
+});
+
+async function openStats() {
+  $("#stats-modal").classList.remove("hidden");
+  const res = await fetch("/api/stats");
+  statsData = await res.json();
+  showOverview();
+}
+
+const fmt = (n) => n >= 10000 ? (n / 10000).toFixed(1) + "w" : String(n);
+const deltaTag = (d) => !d ? "" :
+  d > 0 ? `<span class="d-up">▲${fmt(d)}</span>` :
+  d < 0 ? `<span class="d-down">▼${fmt(-d)}</span>` : "";
+
+function showOverview() {
+  $("#stats-title").textContent = "数据看板";
+  $("#btn-stats-back").classList.add("hidden");
+  $("#stats-detail").classList.add("hidden");
+  const box = $("#stats-overview");
+  box.classList.remove("hidden");
+  box.innerHTML = "";
+  statsData.platforms.forEach((p) => {
+    const div = document.createElement("div");
+    div.className = "stat-card";
+    if (p.latest) {
+      const m = p.latest, d = p.delta || {};
+      div.innerHTML = `
+        <div class="s-head">${p.icon} ${p.name}</div>
+        <div class="s-followers">${fmt(m.followers)} ${deltaTag(d.followers)}
+          <small>粉丝</small></div>
+        <div class="stat-row">
+          <span>❤ <b>${fmt(m.likes)}</b> ${deltaTag(d.likes)}</span>
+          <span>💬 <b>${fmt(m.comments)}</b> ${deltaTag(d.comments)}</span>
+          <span>⭐ <b>${fmt(m.favorites)}</b> ${deltaTag(d.favorites)}</span>
+        </div>
+        <div class="s-updated">更新于 ${new Date(p.updated * 1000).toLocaleString("zh-CN")}
+          · ${p.source === "api" ? "API" : "手动"}</div>`;
+    } else {
+      div.innerHTML = `
+        <div class="s-head">${p.icon} ${p.name}</div>
+        <div class="s-empty">暂无数据，点击进入手动记录${
+          statsData.refreshable.includes(p.id) ? "或刷新拉取" : ""}</div>`;
+    }
+    div.addEventListener("click", () => showDetail(p));
+    box.appendChild(div);
+  });
+}
+
+function showDetail(p) {
+  $("#stats-title").textContent = `${p.icon} ${p.name} · 数据详情`;
+  $("#btn-stats-back").classList.remove("hidden");
+  $("#stats-overview").classList.add("hidden");
+  const box = $("#stats-detail");
+  box.classList.remove("hidden");
+
+  const chart = p.series.length >= 2
+    ? svgChart(p.series)
+    : '<p class="muted">至少需要两次记录才能绘制趋势（用下方表单或「刷新数据」多记几次）</p>';
+
+  const postsHtml = p.posts.length ? `
+    <div class="chart-box">
+      <h3>分条目数据（最近一次采集，共 ${p.posts.length} 条）</h3>
+      <table class="posts-table">
+        <tr><th>条目</th><th class="num">👁 浏览</th><th class="num">❤ 喜欢</th>
+            <th class="num">💬 评论</th><th class="num">⭐ 收藏</th></tr>
+        ${p.posts.map((t) => `
+          <tr><td class="p-title">${t.title || "(无标题)"}</td>
+              <td class="num">${fmt(t.views || 0)}</td>
+              <td class="num">${fmt(t.likes || 0)}</td>
+              <td class="num">${fmt(t.comments || 0)}</td>
+              <td class="num">${fmt(t.favorites || 0)}</td></tr>`).join("")}
+      </table>
+    </div>` : "";
+
+  box.innerHTML = `
+    <div class="chart-box">
+      <h3>数据趋势</h3>
+      <div class="chart-legend">
+        <span><i style="background:#3b6df0"></i>粉丝</span>
+        <span><i style="background:#ec6a9c"></i>喜欢</span>
+        <span><i style="background:#16a34a"></i>评论</span>
+        <span><i style="background:#c2700a"></i>收藏</span>
+      </div>
+      ${chart}
+    </div>
+    ${postsHtml}
+    <div class="chart-box">
+      <h3>手动记录当前数据</h3>
+      <div class="manual-form">
+        ${["followers:粉丝", "likes:喜欢", "comments:评论", "favorites:收藏"].map((s) => {
+          const [k, label] = s.split(":");
+          return `<div class="mf"><label>${label}</label>
+            <input type="number" min="0" data-mk="${k}"
+              value="${p.latest ? p.latest[k] : ""}" placeholder="0"></div>`;
+        }).join("")}
+        <button class="btn small" id="btn-manual-save">记录</button>
+      </div>
+    </div>`;
+
+  $("#btn-manual-save").addEventListener("click", async () => {
+    const values = {};
+    box.querySelectorAll("input[data-mk]").forEach((i) => {
+      values[i.dataset.mk] = Number(i.value || 0);
+    });
+    await fetch(`/api/stats/manual/${p.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const res = await fetch("/api/stats");
+    statsData = await res.json();
+    showDetail(statsData.platforms.find((x) => x.id === p.id));
+  });
+}
+
+/* 轻量 SVG 折线图：四个指标各一条线，按各自量级归一化 */
+function svgChart(series) {
+  const W = 640, H = 200, PAD = 34;
+  const colors = { followers: "#3b6df0", likes: "#ec6a9c",
+                   comments: "#16a34a", favorites: "#c2700a" };
+  const ts = series.map((r) => r.ts);
+  const tMin = Math.min(...ts), tMax = Math.max(...ts) || 1;
+  const x = (t) => PAD + (W - 2 * PAD) * (tMax === tMin ? 0.5 : (t - tMin) / (tMax - tMin));
+
+  let lines = "", labels = "";
+  for (const [key, color] of Object.entries(colors)) {
+    const vals = series.map((r) => r[key] || 0);
+    const vMax = Math.max(...vals, 1);
+    const y = (v) => H - PAD - (H - 2 * PAD) * (v / vMax);
+    const pts = series.map((r) => `${x(r.ts).toFixed(1)},${y(r[key] || 0).toFixed(1)}`).join(" ");
+    lines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round"/>`;
+    lines += series.map((r) =>
+      `<circle cx="${x(r.ts).toFixed(1)}" cy="${y(r[key] || 0).toFixed(1)}" r="2.5" fill="${color}"/>`
+    ).join("");
+    const last = series[series.length - 1];
+    labels += `<text x="${W - PAD + 4}" y="${y(last[key] || 0) + 4}"
+      font-size="10" fill="${color}">${fmt(last[key] || 0)}</text>`;
+  }
+  const dateFmt = (t) => new Date(t * 1000).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <line x1="${PAD}" y1="${H - PAD}" x2="${W - PAD}" y2="${H - PAD}"
+      stroke="rgba(125,135,170,.35)"/>
+    ${lines}${labels}
+    <text x="${PAD}" y="${H - PAD + 16}" font-size="10" fill="#767c92">${dateFmt(tMin)}</text>
+    <text x="${W - PAD}" y="${H - PAD + 16}" font-size="10" fill="#767c92" text-anchor="end">${dateFmt(tMax)}</text>
+  </svg>`;
+}
+
 /* ---------- 事件绑定 ---------- */
 
 $("#text").addEventListener("input", scheduleAnalyze);

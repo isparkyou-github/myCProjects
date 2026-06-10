@@ -44,6 +44,11 @@ class BaseAdapter:
     def publish_api(self, content: dict) -> dict:
         raise NotImplementedError
 
+    def fetch_stats(self) -> dict | None:
+        """拉取账号数据。返回 {metrics: {followers,likes,comments,favorites},
+        posts: [{title, views, likes, comments, favorites}]}，无 API 返回 None。"""
+        return None
+
     def save_draft(self, content: dict) -> str:
         ts = time.strftime("%Y%m%d-%H%M%S")
         d = DRAFT_DIR / self.platform_id / ts

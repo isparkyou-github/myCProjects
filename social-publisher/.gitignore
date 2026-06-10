@@ -3,6 +3,7 @@ client_secret.json
 youtube_token.json
 uploads/
 drafts/
+stats_history.json
 .venv/
 __pycache__/
 *.pyc

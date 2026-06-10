@@ -49,3 +49,43 @@ class YouTubeAdapter(BaseAdapter):
         vid = resp["id"]
         return {"ok": True, "mode": "api", "message": "已上传到 YouTube",
                 "url": f"https://youtu.be/{vid}"}
+
+    def fetch_stats(self) -> dict | None:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        creds = Credentials.from_authorized_user_file(
+            str(self.token_path()),
+            ["https://www.googleapis.com/auth/youtube.readonly"],
+        )
+        yt = build("youtube", "v3", credentials=creds)
+        ch = yt.channels().list(
+            part="statistics,contentDetails", mine=True).execute()
+        if not ch.get("items"):
+            return None
+        info = ch["items"][0]
+        st = info["statistics"]
+        uploads = info["contentDetails"]["relatedPlaylists"]["uploads"]
+        items = yt.playlistItems().list(
+            part="contentDetails", playlistId=uploads, maxResults=20
+        ).execute().get("items", [])
+        ids = [i["contentDetails"]["videoId"] for i in items]
+        posts, likes, comments = [], 0, 0
+        if ids:
+            videos = yt.videos().list(
+                part="statistics,snippet", id=",".join(ids)).execute()
+            for v in videos.get("items", []):
+                vs = v["statistics"]
+                likes += int(vs.get("likeCount", 0))
+                comments += int(vs.get("commentCount", 0))
+                posts.append({
+                    "title": v["snippet"]["title"][:40],
+                    "views": int(vs.get("viewCount", 0)),
+                    "likes": int(vs.get("likeCount", 0)),
+                    "comments": int(vs.get("commentCount", 0)),
+                    "favorites": int(vs.get("favoriteCount", 0)),
+                })
+        return {"metrics": {"followers": int(st.get("subscriberCount", 0)),
+                            "likes": likes, "comments": comments,
+                            "favorites": 0},
+                "posts": posts}
