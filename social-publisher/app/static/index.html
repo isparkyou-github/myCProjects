@@ -11,6 +11,7 @@
   <header>
     <h1>OnePost</h1>
     <p class="sub">一次创作，多平台发布 · 自动识别内容并匹配平台规范</p>
+    <button id="btn-settings" class="btn small settings-entry">⚙️ 账号设置</button>
   </header>
 
   <section class="card">
@@ -51,6 +52,17 @@
     <div id="results-list"></div>
   </section>
 </main>
+<div id="settings-modal" class="modal hidden">
+  <div class="modal-card">
+    <div class="row-between modal-head">
+      <h2>平台账号设置</h2>
+      <button id="btn-settings-close" class="btn small">✕</button>
+    </div>
+    <p class="muted settings-note">凭据仅保存在本机 config.yaml（不会上传），界面中打码显示。
+      到期后自动失效，发布将降级为草稿模式。</p>
+    <div id="settings-list"></div>
+  </div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>
